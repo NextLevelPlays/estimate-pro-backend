@@ -10,7 +10,8 @@ app.use(express.json());
 
 // Port
 const PORT = process.env.PORT || 3001;
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+
+console.log('API Key available:', !!process.env.CLAUDE_API_KEY);
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -26,8 +27,9 @@ app.post('/api/generate-scope', async (req, res) => {
       return res.status(400).json({ error: 'Raw scope is required' });
     }
 
-    if (!CLAUDE_API_KEY) {
-      return res.status(500).json({ error: 'API key not configured' });
+    const apiKey = process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'API key not configured on server' });
     }
 
     const response = await axios.post(
@@ -38,30 +40,14 @@ app.post('/api/generate-scope', async (req, res) => {
         messages: [
           {
             role: 'user',
-            content: `You are a professional construction estimate scope generator for a handyman service called "${companyName}". 
-
-Convert the following rough notes into a professional, detailed scope of work that would be sent to a client. 
-
-Requirements:
-1. Use professional but friendly language
-2. Be specific about what work will be done
-3. Include any materials or labor mentioned
-4. Mention safety considerations if applicable
-5. Include information about cleanup and quality assurance
-6. Format with numbered sections and clear descriptions
-7. Keep it concise but comprehensive
-
-Raw Notes:
-${rawScope}
-
-Please provide a professional scope of work:`
+            content: `You are a professional construction estimate scope generator for a handyman service called "${companyName}". Convert the following rough notes into a professional, detailed scope of work. Use professional language, be specific about work to be done, and format with numbered sections. Raw Notes: ${rawScope}`
           }
         ]
       },
       {
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
+          'x-api-key': apiKey,
           'anthropic-version': '2023-06-01'
         }
       }
@@ -70,15 +56,19 @@ Please provide a professional scope of work:`
     const professionalScope = response.data.content[0].text;
     res.json({ professionalScope });
   } catch (error) {
-    console.error('Error:', error.response?.data || error.message);
+    console.error('API Error:', error.response?.data || error.message);
     res.status(500).json({
       error: error.response?.data?.error?.message || 'Failed to generate scope'
     });
   }
 });
 
+// Error handling
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
 });
-```
