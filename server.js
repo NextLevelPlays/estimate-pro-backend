@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-require('dotenv').config();
 
 const app = express();
 
@@ -11,8 +10,9 @@ app.use(express.json());
 
 // Port
 const PORT = process.env.PORT || 3001;
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
-// Health check endpoint (Render will use this)
+// Health check endpoint
 app.get('/', (req, res) => {
   res.json({ status: 'Backend is running!' });
 });
@@ -22,16 +22,14 @@ app.post('/api/generate-scope', async (req, res) => {
   try {
     const { rawScope, companyName } = req.body;
 
-    // Validate input
     if (!rawScope) {
       return res.status(400).json({ error: 'Raw scope is required' });
     }
 
-    if (!process.env.CLAUDE_API_KEY) {
+    if (!CLAUDE_API_KEY) {
       return res.status(500).json({ error: 'API key not configured' });
     }
 
-    // Call Claude API
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
@@ -63,15 +61,13 @@ Please provide a professional scope of work:`
       {
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.CLAUDE_API_KEY,
+          'x-api-key': CLAUDE_API_KEY,
           'anthropic-version': '2023-06-01'
         }
       }
     );
 
-    // Extract the text from response
     const professionalScope = response.data.content[0].text;
-
     res.json({ professionalScope });
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
@@ -86,11 +82,3 @@ app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
 });
 ```
-
----
-
-## **FILE 3: .env.example**
-
-Create a file called `.env.example` in the same folder and paste this:
-```
-CLAUDE_API_KEY=sk-ant-your-api-key-here
